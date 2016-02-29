@@ -185,7 +185,6 @@ const unsigned char running [] PROGMEM = {
 0x3f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
 0xff, 0xff, 0xff, 0x00, 0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xc1, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
-
 };
 // ==============================================================================================
 // GLOBALS                                                                                 ======
@@ -199,7 +198,6 @@ String patterns[] = { "RAINBOW", "FADE" };
 const int numberOfPatterns = 2;
 int currentPattern = 0;
 
-
 // TFT SCREEN --------------------------------------
 #define TFT_PIN_CS   10
 #define TFT_PIN_DC   8
@@ -209,9 +207,15 @@ Adafruit_ST7735 tft = Adafruit_ST7735(TFT_PIN_CS, TFT_PIN_DC, TFT_PIN_RST);
 unsigned long screenRefreshRate = 10000;
 unsigned long lastScreenUpdate = 0;
 
-String textData[2];
-uint32_t colorData[2]
 int currentlyDisplayedService = 0;
+int numberOfServices = 2;
+
+String textData[numberOfServices];
+uint32_t colorData[numberOfServices];
+char *logos[numberOfServices];
+logos[0] = &running;
+logos[1] = &running;
+
 
 // BUZZER ------------------------------------------
 #define BUZZ_PIN 3
@@ -235,7 +239,7 @@ void setup() {
   Serial.println("TFT initialized");
   tftDrawText("Beep...\n Boop... \n Am I Cylon?", ST7735_WHITE);
   delay(5000);
-  tft.drawBitmap(0, 0, running, 160, 128, ST7735_WHITE);
+  tft.drawBitmap(0, 0, *logos[0], 160, 128, ST7735_WHITE);
   delay(5000);
   tone(BUZZ_PIN, 262, 250);
 }
@@ -263,18 +267,16 @@ void neoComplete() {
 // HELPERS ---------------------------------------
 void screenTimedUpdate() {
   if((millis() - lastScreenUpdate) > screenRefreshRate) {
-    currentlyDisplayedService++;
-    if(currentlyDisplayedService > 1) {
-      currentlyDisplayedService = 0;
+    if(currentlyDisplayedService > numberOfServices - 2) {
+    	updateDisplayedService(currentlyDisplayedService + 1);
+    } else {
+    	updateDisplayedService(0);
     }
-
-    updateScreen();
   }
 }
 
 void updateScreen() {
    tftDrawText(textData[currentlyDisplayedService], ST7735_WHITE);
-   lastScreenUpdate = millis();  
 }
 
 void updateEyes() {
@@ -285,6 +287,7 @@ void updateEyes() {
 
 void updateDisplayedService(service) {
   currentlyDisplayedService = service;
+  lastScreenUpdate = millis();
   updateScreen();
   updateEyes(); 
 }
@@ -316,7 +319,6 @@ void receiveEvent(int howMany) {
     if(message == "REFRESH") {
       tftDrawText(message, ST7735_WHITE);
       lastScreenUpdate = millis();
-      
       strip.setLoop(true);
     } else if(message == "FADE") {
       strip.Fade(Wheel(24), Wheel(200), 100, 10);
@@ -334,20 +336,14 @@ void receiveEvent(int howMany) {
       }
     } 
   } else if(topic == "runmonitor") {
-    strip.setPixelColor(3, getNeoColor(message));
-    strip.show();
     colorData[0] = getNeoColor(message);
     textData[0] = "Run Monitor\n" + message;
   } else if(topic == "gethomedry") {
-    strip.setPixelColor(4, getNeoColor(message));
-    strip.show();
     colorData[1] = getNeoColor(message);
     textData[1] = "GetHomeDry\n" + message;
   }
   strip.show(); 
 }
-
-
 
 uint32_t getNeoColor(String color) {
   int rIndex = color.indexOf("R");
@@ -361,7 +357,6 @@ uint32_t getNeoColor(String color) {
 
   return strip.Color(green.toInt(), red.toInt(), blue.toInt());
 }
-
 
 // NEOPIXELS ---------------------------------------
 /*
@@ -391,10 +386,6 @@ uint32_t Wheel(byte WheelPos) {
   return strip.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
 }
 
-
-
-
-
 // TFT SCREEN --------------------------------------
 void tftDrawText(char *text, uint16_t color) {
   tft.fillScreen(ST7735_BLACK);
@@ -410,5 +401,3 @@ void tftDrawText(String text, uint16_t color) {
   text.toCharArray(tmp, 50);
   tftDrawText(tmp, color); 
 }
-
-
